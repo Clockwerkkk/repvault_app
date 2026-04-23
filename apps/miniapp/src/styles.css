@@ -1,0 +1,137 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  line-height: 1.4;
+  color: #f4f6f8;
+  background: #0f1115;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.container {
+  min-height: 100dvh;
+  padding: 24px 16px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
+
+.screen {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  background: #171b22;
+  border: 1px solid #2a313d;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.list-item {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2a313d;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #0f1115;
+  padding: 6px 0;
+}
+
+.actions-row {
+  display: flex;
+  gap: 8px;
+}
+
+.group-tiles-scroll {
+  max-height: 42dvh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.group-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.group-tile-btn {
+  min-height: 56px;
+  text-align: left;
+}
+
+.primary-btn,
+.secondary-btn,
+.text-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.primary-btn {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+
+.secondary-btn {
+  background: #232b38;
+  color: #fff;
+}
+
+.text-btn {
+  background: transparent;
+  color: #9ab8ff;
+  padding: 0;
+}
+
+.input {
+  width: 100%;
+  background: #171b22;
+  color: #fff;
+  border: 1px solid #2a313d;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 16px;
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.error-text {
+  color: #ff8a8a;
+  white-space: pre-wrap;
+}
+
+.footer-actions {
+  margin-top: 16px;
+}
+
+.keyboard-safe {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
