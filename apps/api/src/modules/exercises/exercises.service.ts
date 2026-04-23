@@ -106,7 +106,7 @@ export async function getExerciseProgress(userId: string, exerciseId: string) {
     let sessionVolume = 0;
 
     for (const set of item.sets) {
-      const weight = Number(set.weightKg);
+      const weight = set.weightKg === null ? 0 : Number(set.weightKg);
       const e1rm = calculateEstimatedOneRepMax(weight, set.reps);
       const volume = weight * set.reps;
 

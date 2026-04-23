@@ -1,13 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../common/auth-middleware.js";
-import type { AddWorkoutExerciseBody, CreateWorkoutBody } from "./dto/workouts.dto.js";
+import type {
+  AddWorkoutExerciseBody,
+  CreateWorkoutBody,
+  UpdateWorkoutBody
+} from "./dto/workouts.dto.js";
 import {
   addExerciseToWorkout,
   createWorkout,
+  deleteWorkout,
+  deleteWorkoutExercise,
   finishWorkout,
   getActiveWorkout,
   getWorkoutDetails,
-  getWorkoutHistory
+  getWorkoutHistory,
+  updateWorkoutTitle
 } from "./workouts.service.js";
 
 function mapWorkoutResponse(workout: Awaited<ReturnType<typeof getActiveWorkout>>) {
@@ -37,7 +44,7 @@ function mapWorkoutResponse(workout: Awaited<ReturnType<typeof getActiveWorkout>
       sets: item.sets.map((set) => ({
         id: set.id,
         setIndex: set.setIndex,
-        weightKg: Number(set.weightKg),
+        weightKg: set.weightKg === null ? null : Number(set.weightKg),
         reps: set.reps,
         setType: set.setType
       }))
@@ -143,6 +150,70 @@ export async function registerWorkoutsController(server: FastifyInstance): Promi
     }
   );
 
+  server.patch<{ Params: { id: string }; Body: UpdateWorkoutBody }>(
+    "/workouts/:id",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      if (!request.authUserId) {
+        return reply.code(401).send({ message: "Unauthorized" });
+      }
+
+      const workout = await updateWorkoutTitle(request.authUserId, request.params.id, request.body?.title);
+      if (!workout) {
+        return reply.code(404).send({ message: "Workout not found" });
+      }
+
+      return reply.send({
+        id: workout.id,
+        title: workout.title,
+        status: workout.status
+      });
+    }
+  );
+
+  server.delete<{ Params: { id: string } }>(
+    "/workouts/:id",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      if (!request.authUserId) {
+        return reply.code(401).send({ message: "Unauthorized" });
+      }
+
+      const result = await deleteWorkout(request.authUserId, request.params.id);
+      if (!result) {
+        return reply.code(404).send({ message: "Workout not found" });
+      }
+
+      return reply.code(204).send();
+    }
+  );
+
+  server.delete<{ Params: { id: string; workoutExerciseId: string } }>(
+    "/workouts/:id/exercises/:workoutExerciseId",
+    { preHandler: requireAuth },
+    async (request, reply) => {
+      if (!request.authUserId) {
+        return reply.code(401).send({ message: "Unauthorized" });
+      }
+
+      const result = await deleteWorkoutExercise(
+        request.authUserId,
+        request.params.id,
+        request.params.workoutExerciseId
+      );
+
+      if (result.status === "workout_not_found") {
+        return reply.code(404).send({ message: "Active workout not found" });
+      }
+
+      if (result.status === "workout_exercise_not_found") {
+        return reply.code(404).send({ message: "Workout exercise not found" });
+      }
+
+      return reply.code(204).send();
+    }
+  );
+
   server.get("/workouts/history", { preHandler: requireAuth }, async (request, reply) => {
     if (!request.authUserId) {
       return reply.code(401).send({ message: "Unauthorized" });
@@ -197,7 +268,7 @@ export async function registerWorkoutsController(server: FastifyInstance): Promi
           sets: item.sets.map((set) => ({
             id: set.id,
             setIndex: set.setIndex,
-            weightKg: Number(set.weightKg),
+            weightKg: set.weightKg === null ? null : Number(set.weightKg),
             reps: set.reps,
             setType: set.setType
           }))

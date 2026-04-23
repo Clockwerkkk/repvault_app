@@ -26,8 +26,35 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   workouts       Workout[]
+  templates      WorkoutTemplate[]
 
   @@map("users")
+}
+
+model WorkoutTemplate {
+  id        String                    @id @default(uuid())
+  userId    String                    @map("user_id")
+  title     String
+  createdAt DateTime                  @default(now()) @map("created_at")
+  updatedAt DateTime                  @updatedAt @map("updated_at")
+  user      User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercises WorkoutTemplateExercise[]
+
+  @@index([userId, createdAt])
+  @@map("workout_templates")
+}
+
+model WorkoutTemplateExercise {
+  id         String          @id @default(uuid())
+  templateId String          @map("template_id")
+  exerciseId String          @map("exercise_id")
+  orderIndex Int             @map("order_index")
+  template   WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exercise   Exercise        @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@unique([templateId, exerciseId])
+  @@index([templateId, orderIndex])
+  @@map("workout_template_exercises")
 }
 
 model ExerciseCategory {
@@ -49,6 +76,7 @@ model Exercise {
   createdAt     DateTime          @default(now()) @map("created_at")
   category      ExerciseCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   workoutItems  WorkoutExercise[]
+  templateItems WorkoutTemplateExercise[]
 
   @@unique([name, categoryId])
   @@index([categoryId])
@@ -93,7 +121,7 @@ model SetEntry {
   id                String          @id @default(uuid())
   workoutExerciseId String          @map("workout_exercise_id")
   setIndex          Int             @map("set_index")
-  weightKg          Decimal         @db.Decimal(6, 2) @map("weight_kg")
+  weightKg          Decimal?        @db.Decimal(6, 2) @map("weight_kg")
   reps              Int
   setType           SetType         @default(working) @map("set_type")
   createdAt         DateTime        @default(now()) @map("created_at")

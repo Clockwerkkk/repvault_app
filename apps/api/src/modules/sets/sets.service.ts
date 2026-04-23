@@ -1,14 +1,14 @@
 import { prisma } from "../../common/prisma.js";
 
 type SetInput = {
-  weightKg: number;
+  weightKg: number | null;
   reps: number;
   setType: "working" | "warmup";
 };
 
 export function validateSetInput(input: SetInput): string | null {
-  if (!Number.isFinite(input.weightKg) || input.weightKg < 0) {
-    return "weightKg must be a number >= 0";
+  if (input.weightKg !== null && (!Number.isFinite(input.weightKg) || input.weightKg < 0)) {
+    return "weightKg must be a number >= 0 when provided";
   }
 
   if (!Number.isInteger(input.reps) || input.reps <= 0) {
@@ -85,7 +85,7 @@ export async function updateSet(
   }
 
   const nextInput: SetInput = {
-    weightKg: input.weightKg ?? Number(existing.weightKg),
+    weightKg: input.weightKg === undefined ? (existing.weightKg === null ? null : Number(existing.weightKg)) : input.weightKg,
     reps: input.reps ?? existing.reps,
     setType: input.setType ?? existing.setType
   };

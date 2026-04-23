@@ -43,7 +43,7 @@ export function WorkoutExerciseScreen(props: WorkoutExerciseScreenProps) {
   if (!props.workoutExercise) {
     return (
       <section className="screen">
-        <div className="sticky-header">
+        <div className="top-row sticky-header">
           <button className="text-btn" onClick={props.onBack} type="button">
             {props.t("back")}
           </button>
@@ -55,13 +55,12 @@ export function WorkoutExerciseScreen(props: WorkoutExerciseScreenProps) {
 
   return (
     <section className="screen">
-      <div className="sticky-header">
+      <div className="top-row sticky-header">
         <button className="text-btn" onClick={props.onBack} type="button">
           {props.t("back")}
         </button>
       </div>
-
-      <h1>{props.workoutExercise.exercise.name}</h1>
+      <h2>{props.workoutExercise.exercise.name}</h2>
       <p>{props.t("categoryLabel", { value: props.workoutExercise.exercise.category.name })}</p>
 
       <article className="card">
@@ -71,7 +70,8 @@ export function WorkoutExerciseScreen(props: WorkoutExerciseScreenProps) {
           <div key={set.id} className="list-item">
             <strong>{props.t("setLabel", { index: set.setIndex })}</strong>
             <span>
-              {set.weightKg} kg x {set.reps} ({set.setType === "working" ? props.t("working") : props.t("warmup")})
+              {set.weightKg === null ? props.t("bodyweightLabel") : `${set.weightKg} kg`} x {set.reps} (
+              {set.setType === "working" ? props.t("working") : props.t("warmup")})
             </span>
             <button
               className="text-btn"
@@ -97,7 +97,7 @@ export function WorkoutExerciseScreen(props: WorkoutExerciseScreenProps) {
         <h2>{props.editingSetId ? props.t("editSet") : props.t("addSet")}</h2>
         <input
           className="input"
-          placeholder={props.t("weightPlaceholder")}
+          placeholder={props.t("weightOptionalPlaceholder")}
           value={props.weightKg}
           type="number"
           inputMode="decimal"

@@ -21,12 +21,12 @@ export function CatalogScreen(props: CatalogScreenProps) {
 
   return (
     <section className="screen">
-      <div className="sticky-header">
+      <div className="top-row sticky-header">
         <button className="text-btn" onClick={props.onBack} type="button">
           {props.t("back")}
         </button>
+        <h1>{props.t("exerciseCatalog")}</h1>
       </div>
-      <h1>{props.t("exerciseCatalog")}</h1>
 
       <input
         className="input"

@@ -879,6 +879,11 @@ This phase captures user-requested product refinements before final relaunch.
 ### Task 7.6 - Workout templates and quick start
 **What is created**
 - User-defined workout templates and one-tap start from template.
+- Template details view with edit/delete actions.
+- Template editor for:
+  - title update
+  - exercise composition update (add/remove)
+- Ability to create template without starting workout.
 
 **Files touched**
 - `prisma/schema.prisma` (+ migration)
@@ -888,9 +893,12 @@ This phase captures user-requested product refinements before final relaunch.
 
 **What should work after completion**
 - User can create template and start prefilled workout quickly.
+- User can manage template lifecycle end-to-end (create/open/edit/delete).
 
 **How to verify**
-- Create template -> start workout from template -> exercises preloaded in correct order.
+- Create template from active workout -> start from template -> exercises preloaded in correct order.
+- Open template details -> edit title and composition -> save -> reopen and verify updates.
+- Create template from scratch (without active workout) -> verify it appears and can start workout.
 
 ---
 

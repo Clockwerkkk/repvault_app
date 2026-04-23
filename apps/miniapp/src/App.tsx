@@ -4,14 +4,30 @@ import { getExerciseProgress, listExercises } from "./api/exercises";
 import { getHomeSummary } from "./api/home";
 import { createSet, deleteSet, updateSet } from "./api/sets";
 import {
+  createTemplate,
+  createTemplateFromWorkout,
+  deleteTemplate,
+  listTemplates,
+  startWorkoutFromTemplate,
+  updateTemplateTitle
+} from "./api/templates";
+import {
   addExerciseToWorkout,
   createWorkout,
+  deleteWorkout,
+  deleteWorkoutExercise,
   finishWorkout,
   getActiveWorkout,
   getWorkoutDetails,
-  getWorkoutHistory
+  getWorkoutHistory,
+  updateWorkout
 } from "./api/workouts";
-import { clearAuthState, loadAuthState, saveAuthState } from "./auth/session";
+import {
+  loadAppSessionState,
+  loadAuthState,
+  saveAppSessionState,
+  saveAuthState
+} from "./auth/session";
 import { getTelegramInitDataFromWindow } from "./auth/telegram";
 import { ErrorState } from "./components/ErrorState";
 import { exerciseGroups, getCatalogGroups, getItemsForGroup } from "./data/exerciseGroups";
@@ -23,6 +39,9 @@ import { ExerciseProgressScreen } from "./screens/ExerciseProgressScreen";
 import { ExercisePickerScreen } from "./screens/ExercisePickerScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
 import { HomeScreen } from "./screens/HomeScreen";
+import { TemplateDetailsScreen } from "./screens/TemplateDetailsScreen";
+import { TemplateEditorScreen } from "./screens/TemplateEditorScreen";
+import { TemplatesScreen } from "./screens/TemplatesScreen";
 import { WorkoutDetailsScreen } from "./screens/WorkoutDetailsScreen";
 import { WorkoutExerciseScreen } from "./screens/WorkoutExerciseScreen";
 import type {
@@ -31,6 +50,7 @@ import type {
   ExerciseListItem,
   ExerciseProgress,
   HomeSummary,
+  WorkoutTemplate,
   WorkoutDetails,
   WorkoutHistoryItem
 } from "./types";
@@ -43,31 +63,51 @@ type AppScreen =
   | "history"
   | "workoutDetails"
   | "exerciseProgress"
-  | "catalog";
+  | "catalog"
+  | "templates"
+  | "templateDetails"
+  | "templateEditor";
 
 export function App() {
+  const initialAppSession = loadAppSessionState();
   const { language, setLanguage, t } = useI18n();
   const allowDevTelegramAuth = import.meta.env.VITE_ALLOW_DEV_TELEGRAM_AUTH === "true";
   const [authState, setAuthState] = useState<AuthState | null>(loadAuthState());
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const [screen, setScreen] = useState<AppScreen>("home");
+  const [screen, setScreen] = useState<AppScreen>((initialAppSession?.screen as AppScreen) ?? "home");
 
   const [homeSummary, setHomeSummary] = useState<HomeSummary | null>(null);
   const [homeLoading, setHomeLoading] = useState(false);
 
   const [activeWorkout, setActiveWorkout] = useState<ActiveWorkout | null>(null);
   const [activeWorkoutLoading, setActiveWorkoutLoading] = useState(false);
+  const [workoutTitleInput, setWorkoutTitleInput] = useState("");
+  const [workoutTitleError, setWorkoutTitleError] = useState<string | null>(null);
+  const [workoutTitleSaving, setWorkoutTitleSaving] = useState(false);
 
   const [pickerLoading, setPickerLoading] = useState(false);
-  const [pickerSearchValue, setPickerSearchValue] = useState("");
-  const [pickerGroupId, setPickerGroupId] = useState("");
-  const [catalogSearchValue, setCatalogSearchValue] = useState("");
+  const [pickerSearchValue, setPickerSearchValue] = useState(initialAppSession?.pickerSearchValue ?? "");
+  const [pickerGroupId, setPickerGroupId] = useState(initialAppSession?.pickerGroupId ?? "");
+  const [catalogSearchValue, setCatalogSearchValue] = useState(initialAppSession?.catalogSearchValue ?? "");
   const [exerciseItems, setExerciseItems] = useState<ExerciseListItem[]>([]);
   const [historyItems, setHistoryItems] = useState<WorkoutHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [selectedWorkoutExerciseId, setSelectedWorkoutExerciseId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
+  const [templateEditSaving, setTemplateEditSaving] = useState(false);
+  const [templateDeleting, setTemplateDeleting] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateEditorTitle, setTemplateEditorTitle] = useState("");
+  const [templateEditorTitleError, setTemplateEditorTitleError] = useState<string | null>(null);
+  const [templateEditorGroupId, setTemplateEditorGroupId] = useState("");
+  const [templateEditorSearchValue, setTemplateEditorSearchValue] = useState("");
+  const [templateEditorExerciseIds, setTemplateEditorExerciseIds] = useState<string[]>([]);
+  const [selectedWorkoutExerciseId, setSelectedWorkoutExerciseId] = useState<string | null>(
+    initialAppSession?.selectedWorkoutExerciseId ?? null
+  );
   const [weightKgInput, setWeightKgInput] = useState("");
   const [repsInput, setRepsInput] = useState("");
   const [weightInputError, setWeightInputError] = useState<string | null>(null);
@@ -75,12 +115,22 @@ export function App() {
   const [setTypeInput, setSetTypeInput] = useState<"working" | "warmup">("working");
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [setSaving, setSetSaving] = useState(false);
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(
+    initialAppSession?.selectedWorkoutId ?? null
+  );
   const [workoutDetails, setWorkoutDetails] = useState<WorkoutDetails | null>(null);
   const [workoutDetailsLoading, setWorkoutDetailsLoading] = useState(false);
   const [exerciseProgress, setExerciseProgress] = useState<ExerciseProgress | null>(null);
   const [exerciseProgressLoading, setExerciseProgressLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!actionError) {
+      return;
+    }
+
+    setActionError(null);
+  }, [screen]);
 
   const userName = useMemo(() => authState?.user.firstName ?? "athlete", [authState]);
   const localizeExerciseItem = (item: ExerciseListItem): ExerciseListItem => ({
@@ -162,6 +212,18 @@ export function App() {
     }
     return getItemsForGroup(displayExerciseItems, selectedPickerGroup.id);
   }, [displayExerciseItems, selectedPickerGroup]);
+  const selectedTemplateEditorGroup = useMemo(
+    () => exerciseGroups.find((group) => group.id === templateEditorGroupId) ?? null,
+    [templateEditorGroupId]
+  );
+  const templateEditorItems = useMemo(() => {
+    if (!selectedTemplateEditorGroup) {
+      return [];
+    }
+    return getItemsForGroup(displayExerciseItems, selectedTemplateEditorGroup.id).filter((item) =>
+      item.name.toLowerCase().includes(templateEditorSearchValue.trim().toLowerCase())
+    );
+  }, [displayExerciseItems, selectedTemplateEditorGroup, templateEditorSearchValue]);
   const groupedCatalogItems = useMemo(
     () => getCatalogGroups(displayExerciseItems),
     [displayExerciseItems]
@@ -181,6 +243,35 @@ export function App() {
   const displayExerciseProgress = useMemo(
     () => (exerciseProgress ? localizeExerciseProgressData(exerciseProgress) : null),
     [exerciseProgress, language]
+  );
+  const displayTemplates = useMemo(
+    () =>
+      templates.map((template) => ({
+        ...template,
+        exercises: template.exercises.map((item) => ({
+          ...item,
+          exercise: {
+            ...item.exercise,
+            name: localizeExerciseName(language, item.exercise.name),
+            category: {
+              ...item.exercise.category,
+              name: localizeCategoryName(
+                language,
+                item.exercise.category.slug,
+                item.exercise.category.name
+              )
+            }
+          }
+        }))
+      })),
+    [templates, language]
+  );
+  const templateEditorSelectedItems = useMemo(
+    () =>
+      templateEditorExerciseIds
+        .map((exerciseId) => displayExerciseItems.find((item) => item.id === exerciseId) ?? null)
+        .filter((item): item is ExerciseListItem => item !== null),
+    [templateEditorExerciseIds, displayExerciseItems]
   );
 
   useEffect(() => {
@@ -203,19 +294,112 @@ export function App() {
       return;
     }
 
+    setTemplatesLoading(true);
+    listTemplates(authState.token)
+      .then((result) => setTemplates(result.items))
+      .catch(() => undefined)
+      .finally(() => setTemplatesLoading(false));
+  }, [authState]);
+
+  useEffect(() => {
+    if (!authState) {
+      return;
+    }
+
+    saveAppSessionState({
+      screen,
+      selectedWorkoutExerciseId,
+      selectedWorkoutId,
+      pickerSearchValue,
+      pickerGroupId,
+      catalogSearchValue
+    });
+  }, [
+    authState,
+    screen,
+    selectedWorkoutExerciseId,
+    selectedWorkoutId,
+    pickerSearchValue,
+    pickerGroupId,
+    catalogSearchValue
+  ]);
+
+  useEffect(() => {
+    if (!displayActiveWorkout) {
+      setWorkoutTitleInput("");
+      setWorkoutTitleError(null);
+      return;
+    }
+
+    setWorkoutTitleInput(displayActiveWorkout.title);
+  }, [displayActiveWorkout]);
+
+  useEffect(() => {
+    if (!authState) {
+      return;
+    }
+
     void getActiveWorkout(authState.token)
       .then((workout) => setActiveWorkout(workout))
       .catch(() => undefined);
   }, [authState]);
 
   useEffect(() => {
-    if (!authState || (screen !== "exercisePicker" && screen !== "catalog")) {
+    if (!authState) {
       return;
     }
 
-    const search = screen === "exercisePicker" ? pickerSearchValue : catalogSearchValue;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      void getActiveWorkout(authState.token)
+        .then((workout) => {
+          setActiveWorkout(workout);
+          if (!workout && (screen === "activeWorkout" || screen === "exercisePicker" || screen === "workoutExercise")) {
+            setScreen("home");
+          }
+        })
+        .catch(() => undefined);
+
+      void getHomeSummary(authState.token)
+        .then(setHomeSummary)
+        .catch(() => undefined);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [authState, screen]);
+
+  useEffect(() => {
+    if (activeWorkout || (screen !== "activeWorkout" && screen !== "exercisePicker" && screen !== "workoutExercise")) {
+      return;
+    }
+
+    setScreen("home");
+  }, [activeWorkout, screen]);
+
+  useEffect(() => {
+    if (!authState || (screen !== "exercisePicker" && screen !== "catalog" && screen !== "templateEditor")) {
+      return;
+    }
+
+    const search =
+      screen === "exercisePicker"
+        ? pickerSearchValue
+        : screen === "templateEditor"
+          ? templateEditorSearchValue
+          : catalogSearchValue;
     const category = "";
     if (screen === "exercisePicker" && !selectedPickerGroup) {
+      setExerciseItems([]);
+      setPickerLoading(false);
+      return;
+    }
+    if (screen === "templateEditor" && !selectedTemplateEditorGroup) {
       setExerciseItems([]);
       setPickerLoading(false);
       return;
@@ -238,8 +422,11 @@ export function App() {
     screen,
     pickerSearchValue,
     pickerGroupId,
+    templateEditorSearchValue,
+    templateEditorGroupId,
     catalogSearchValue,
     selectedPickerGroup,
+    selectedTemplateEditorGroup,
     t
   ]);
 
@@ -319,6 +506,130 @@ export function App() {
     }
   };
 
+  const saveWorkoutTitle = async (): Promise<void> => {
+    if (!authState || !activeWorkout) {
+      return;
+    }
+
+    const normalizedTitle = workoutTitleInput.trim();
+    if (!normalizedTitle) {
+      setWorkoutTitleError(t("workoutTitleRequired"));
+      return;
+    }
+
+    setWorkoutTitleSaving(true);
+    setWorkoutTitleError(null);
+    try {
+      await updateWorkout(authState.token, activeWorkout.id, { title: normalizedTitle });
+      await refreshActiveWorkout();
+      const summary = await getHomeSummary(authState.token);
+      setHomeSummary(summary);
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToUpdateWorkout");
+      setActionError(fallbackMessage);
+    } finally {
+      setWorkoutTitleSaving(false);
+    }
+  };
+
+  const removeWorkoutExercise = async (workoutExerciseId: string): Promise<void> => {
+    if (!authState || !activeWorkout) {
+      return;
+    }
+
+    if (!confirmAction(t("confirmDeleteExercise"))) {
+      return;
+    }
+
+    try {
+      await deleteWorkoutExercise(authState.token, activeWorkout.id, workoutExerciseId);
+      if (selectedWorkoutExerciseId === workoutExerciseId) {
+        setSelectedWorkoutExerciseId(null);
+        setScreen("activeWorkout");
+      }
+      await refreshActiveWorkout();
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToDeleteExercise");
+      setActionError(fallbackMessage);
+    }
+  };
+
+  const removeWorkout = async (workoutId: string): Promise<void> => {
+    if (!authState) {
+      return;
+    }
+
+    if (!confirmAction(t("confirmDeleteWorkout"))) {
+      return;
+    }
+
+    try {
+      await deleteWorkout(authState.token, workoutId);
+      setSelectedWorkoutId(null);
+      setWorkoutDetails(null);
+      if (activeWorkout?.id === workoutId) {
+        setActiveWorkout(null);
+        setSelectedWorkoutExerciseId(null);
+      }
+      const [summary, history, workout] = await Promise.all([
+        getHomeSummary(authState.token),
+        getWorkoutHistory(authState.token),
+        getActiveWorkout(authState.token)
+      ]);
+      setHomeSummary(summary);
+      setHistoryItems(history.items);
+      setActiveWorkout(workout);
+      setScreen("home");
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToDeleteWorkout");
+      setActionError(fallbackMessage);
+    }
+  };
+
+  const saveActiveWorkoutAsTemplate = async (): Promise<void> => {
+    if (!authState || !activeWorkout) {
+      return;
+    }
+
+    const nextTemplateTitle = window.prompt(t("templateNamePrompt"), activeWorkout.title) ?? "";
+    const normalizedTemplateTitle = nextTemplateTitle.trim();
+    if (!normalizedTemplateTitle) {
+      return;
+    }
+
+    try {
+      setTemplateSaving(true);
+      await createTemplateFromWorkout(authState.token, activeWorkout.id, normalizedTemplateTitle);
+      const result = await listTemplates(authState.token);
+      setTemplates(result.items);
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToCreateTemplate");
+      setActionError(fallbackMessage);
+    } finally {
+      setTemplateSaving(false);
+    }
+  };
+
+  const quickStartFromTemplate = async (templateId: string): Promise<void> => {
+    if (!authState) {
+      return;
+    }
+
+    try {
+      await startWorkoutFromTemplate(authState.token, templateId);
+      const workout = await getActiveWorkout(authState.token);
+      setActiveWorkout(workout);
+      setScreen("activeWorkout");
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToStartFromTemplate");
+      setActionError(fallbackMessage);
+    }
+  };
+
+  const confirmAction = (message: string): boolean => {
+    return window.confirm(message);
+  };
+
   const addExercise = async (exerciseId: string): Promise<void> => {
     if (!authState || !activeWorkout) {
       return;
@@ -383,10 +694,12 @@ export function App() {
       return;
     }
 
-    const weightKg = Number(weightKgInput);
+    const normalizedWeightInput = weightKgInput.trim();
+    const weightKg = normalizedWeightInput ? Number(normalizedWeightInput) : null;
     const reps = Number(repsInput);
 
-    const nextWeightError = !Number.isFinite(weightKg) || weightKg <= 0 ? t("weightMustBePositive") : null;
+    const nextWeightError =
+      weightKg !== null && (!Number.isFinite(weightKg) || weightKg < 0) ? t("weightMustBePositiveOrEmpty") : null;
     const nextRepsError = !Number.isFinite(reps) || reps <= 0 ? t("repsMustBePositive") : null;
     setWeightInputError(nextWeightError);
     setRepsInputError(nextRepsError);
@@ -426,7 +739,7 @@ export function App() {
     }
 
     setEditingSetId(setToEdit.id);
-    setWeightKgInput(String(setToEdit.weightKg));
+    setWeightKgInput(setToEdit.weightKg === null ? "" : String(setToEdit.weightKg));
     setRepsInput(String(setToEdit.reps));
     setSetTypeInput(setToEdit.setType);
   };
@@ -445,10 +758,12 @@ export function App() {
       return;
     }
 
-    const weightKg = Number(weightKgInput);
+    const normalizedWeightInput = weightKgInput.trim();
+    const weightKg = normalizedWeightInput ? Number(normalizedWeightInput) : null;
     const reps = Number(repsInput);
 
-    const nextWeightError = !Number.isFinite(weightKg) || weightKg <= 0 ? t("weightMustBePositive") : null;
+    const nextWeightError =
+      weightKg !== null && (!Number.isFinite(weightKg) || weightKg < 0) ? t("weightMustBePositiveOrEmpty") : null;
     const nextRepsError = !Number.isFinite(reps) || reps <= 0 ? t("repsMustBePositive") : null;
     setWeightInputError(nextWeightError);
     setRepsInputError(nextRepsError);
@@ -479,6 +794,10 @@ export function App() {
       return;
     }
 
+    if (!confirmAction(t("confirmDeleteSet"))) {
+      return;
+    }
+
     try {
       await deleteSet(authState.token, setId);
       await refreshActiveWorkout();
@@ -503,6 +822,125 @@ export function App() {
       setActionError(fallbackMessage);
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  const openTemplates = async (): Promise<void> => {
+    if (!authState) {
+      return;
+    }
+
+    setTemplatesLoading(true);
+    setScreen("templates");
+    try {
+      const result = await listTemplates(authState.token);
+      setTemplates(result.items);
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToLoadTemplates");
+      setActionError(fallbackMessage);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const openTemplateDetails = (templateId: string): void => {
+    setSelectedTemplateId(templateId);
+    setScreen("templateDetails");
+  };
+
+  const openCreateTemplateEditor = (): void => {
+    setSelectedTemplateId(null);
+    setTemplateEditorTitle("");
+    setTemplateEditorTitleError(null);
+    setTemplateEditorGroupId("");
+    setTemplateEditorSearchValue("");
+    setTemplateEditorExerciseIds([]);
+    setScreen("templateEditor");
+  };
+
+  const editTemplate = async (templateId: string): Promise<void> => {
+    const current = templates.find((item) => item.id === templateId);
+    if (!current) {
+      return;
+    }
+    setSelectedTemplateId(current.id);
+    setTemplateEditorTitle(current.title);
+    setTemplateEditorTitleError(null);
+    setTemplateEditorGroupId("");
+    setTemplateEditorSearchValue("");
+    setTemplateEditorExerciseIds(current.exercises.map((item) => item.exercise.id));
+    setScreen("templateEditor");
+  };
+
+  const removeTemplate = async (templateId: string): Promise<void> => {
+    if (!authState) {
+      return;
+    }
+
+    if (!confirmAction(t("confirmDeleteTemplate"))) {
+      return;
+    }
+
+    setTemplateDeleting(true);
+    try {
+      await deleteTemplate(authState.token, templateId);
+      const result = await listTemplates(authState.token);
+      setTemplates(result.items);
+      setSelectedTemplateId(null);
+      setScreen("templates");
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToDeleteTemplate");
+      setActionError(fallbackMessage);
+    } finally {
+      setTemplateDeleting(false);
+    }
+  };
+
+  const addExerciseToTemplateEditor = (exerciseId: string): void => {
+    setTemplateEditorExerciseIds((prev) => (prev.includes(exerciseId) ? prev : [...prev, exerciseId]));
+  };
+
+  const removeExerciseFromTemplateEditor = (exerciseId: string): void => {
+    setTemplateEditorExerciseIds((prev) => prev.filter((id) => id !== exerciseId));
+  };
+
+  const saveTemplateEditor = async (): Promise<void> => {
+    if (!authState) {
+      return;
+    }
+
+    const normalizedTitle = templateEditorTitle.trim();
+    if (!normalizedTitle) {
+      setTemplateEditorTitleError(t("templateTitleRequired"));
+      return;
+    }
+    if (templateEditorExerciseIds.length === 0) {
+      setTemplateEditorTitleError(t("templateExercisesRequired"));
+      return;
+    }
+
+    setTemplateEditSaving(true);
+    setTemplateEditorTitleError(null);
+    try {
+      const result = selectedTemplateId
+        ? await updateTemplateTitle(authState.token, selectedTemplateId, {
+            title: normalizedTitle,
+            exerciseIds: templateEditorExerciseIds
+          })
+        : await createTemplate(authState.token, {
+            title: normalizedTitle,
+            exerciseIds: templateEditorExerciseIds
+          });
+
+      const templatesResult = await listTemplates(authState.token);
+      setTemplates(templatesResult.items);
+      setSelectedTemplateId(result.id);
+      setScreen("templateDetails");
+    } catch (error: unknown) {
+      const fallbackMessage = error instanceof Error ? error.message : t("failedToUpdateTemplate");
+      setActionError(fallbackMessage);
+    } finally {
+      setTemplateEditSaving(false);
     }
   };
 
@@ -545,14 +983,6 @@ export function App() {
     }
   };
 
-  const signOut = (): void => {
-    clearAuthState();
-    setAuthState(null);
-    setScreen("home");
-    setHomeSummary(null);
-    setActiveWorkout(null);
-  };
-
   if (!authState) {
     return (
       <main className="container">
@@ -580,6 +1010,7 @@ export function App() {
           t={t}
           onLanguageChange={setLanguage}
           onStartWorkout={() => void openActiveWorkout()}
+          onOpenTemplates={() => void openTemplates()}
           onOpenHistory={() => void openHistory()}
           onOpenCatalog={() => setScreen("catalog")}
         />
@@ -589,10 +1020,29 @@ export function App() {
         <ActiveWorkoutScreen
           workout={displayActiveWorkout}
           loading={activeWorkoutLoading}
+          titleDraft={workoutTitleInput}
+          titleError={workoutTitleError}
+          titleSaving={workoutTitleSaving}
+          templateSaving={templateSaving}
           t={t}
           onBack={() => setScreen("home")}
+          onTitleDraftChange={(value) => {
+            setWorkoutTitleInput(value);
+            if (workoutTitleError) {
+              setWorkoutTitleError(null);
+            }
+          }}
+          onSaveTitle={() => void saveWorkoutTitle()}
+          onDeleteWorkout={() => {
+            if (!displayActiveWorkout) {
+              return;
+            }
+            void removeWorkout(displayActiveWorkout.id);
+          }}
+          onSaveTemplate={() => void saveActiveWorkoutAsTemplate()}
           onAddExercise={() => setScreen("exercisePicker")}
           onSelectWorkoutExercise={openWorkoutExercise}
+          onDeleteWorkoutExercise={(workoutExerciseId) => void removeWorkoutExercise(workoutExerciseId)}
           onFinishWorkout={() => void finishActiveWorkout()}
         />
       ) : null}
@@ -662,6 +1112,7 @@ export function App() {
           loading={workoutDetailsLoading}
           t={t}
           onBack={() => setScreen("history")}
+          onDeleteWorkout={(workoutId) => void removeWorkout(workoutId)}
           onOpenExerciseProgress={(exerciseId) => void openExerciseProgress(exerciseId)}
         />
       ) : null}
@@ -687,13 +1138,59 @@ export function App() {
         />
       ) : null}
 
-      {actionError ? <ErrorState message={actionError} /> : null}
+      {screen === "templates" ? (
+        <TemplatesScreen
+          items={displayTemplates}
+          loading={templatesLoading}
+          t={t}
+          onBack={() => setScreen("home")}
+          onCreateTemplate={openCreateTemplateEditor}
+          onOpenTemplate={openTemplateDetails}
+          onStartFromTemplate={(templateId) => void quickStartFromTemplate(templateId)}
+        />
+      ) : null}
 
-      <div className="footer-actions">
-        <button className="text-btn" onClick={signOut} type="button">
-          {t("signOut")}
-        </button>
-      </div>
+      {screen === "templateDetails" ? (
+        <TemplateDetailsScreen
+          template={displayTemplates.find((item) => item.id === selectedTemplateId) ?? null}
+          t={t}
+          editing={templateEditSaving}
+          deleting={templateDeleting}
+          onBack={() => setScreen("templates")}
+          onEditTemplate={(templateId) => void editTemplate(templateId)}
+          onDeleteTemplate={(templateId) => void removeTemplate(templateId)}
+          onStartFromTemplate={(templateId) => void quickStartFromTemplate(templateId)}
+        />
+      ) : null}
+
+      {screen === "templateEditor" ? (
+        <TemplateEditorScreen
+          title={templateEditorTitle}
+          titleError={templateEditorTitleError}
+          selectedGroupId={templateEditorGroupId}
+          searchValue={templateEditorSearchValue}
+          groups={exerciseGroups}
+          availableItems={templateEditorItems}
+          selectedItems={templateEditorSelectedItems}
+          loading={pickerLoading}
+          saving={templateEditSaving}
+          t={t}
+          onBack={() => setScreen(selectedTemplateId ? "templateDetails" : "templates")}
+          onTitleChange={(value) => {
+            setTemplateEditorTitle(value);
+            if (templateEditorTitleError) {
+              setTemplateEditorTitleError(null);
+            }
+          }}
+          onGroupChange={setTemplateEditorGroupId}
+          onSearchChange={setTemplateEditorSearchValue}
+          onAddExercise={addExerciseToTemplateEditor}
+          onRemoveExercise={removeExerciseFromTemplateEditor}
+          onSave={() => void saveTemplateEditor()}
+        />
+      ) : null}
+
+      {actionError ? <ErrorState message={actionError} /> : null}
     </main>
   );
 }

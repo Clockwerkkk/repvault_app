@@ -8,6 +8,7 @@ import { registerExercisesController } from "./modules/exercises/exercises.contr
 import { registerHealthController } from "./modules/health/health.controller.js";
 import { registerHomeController } from "./modules/home/home.controller.js";
 import { registerSetsController } from "./modules/sets/sets.controller.js";
+import { registerTemplatesController } from "./modules/templates/templates.controller.js";
 import { registerWorkoutsController } from "./modules/workouts/workouts.controller.js";
 
 async function bootstrap(): Promise<void> {
@@ -16,7 +17,9 @@ async function bootstrap(): Promise<void> {
   const corsOrigin = process.env.CORS_ORIGIN ?? true;
 
   await server.register(cors, {
-    origin: corsOrigin
+    origin: corsOrigin,
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   });
 
   await registerHealthController(server);
@@ -25,6 +28,7 @@ async function bootstrap(): Promise<void> {
   await registerWorkoutsController(server);
   await registerExercisesController(server);
   await registerSetsController(server);
+  await registerTemplatesController(server);
 
   await server.listen({ port, host: "0.0.0.0" });
   server.log.info({ app: appModuleName, port }, "API started");

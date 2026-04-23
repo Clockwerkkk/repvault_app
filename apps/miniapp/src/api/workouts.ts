@@ -56,3 +56,33 @@ export function getWorkoutHistory(token: string): Promise<{ items: WorkoutHistor
 export function getWorkoutDetails(token: string, workoutId: string): Promise<WorkoutDetails> {
   return apiRequest(`/workouts/${workoutId}`, { token });
 }
+
+export function updateWorkout(
+  token: string,
+  workoutId: string,
+  input: { title: string }
+): Promise<{ id: string; title: string; status: string }> {
+  return apiRequest(`/workouts/${workoutId}`, {
+    method: "PATCH",
+    token,
+    body: input
+  });
+}
+
+export function deleteWorkout(token: string, workoutId: string): Promise<void> {
+  return apiRequest(`/workouts/${workoutId}`, {
+    method: "DELETE",
+    token
+  });
+}
+
+export function deleteWorkoutExercise(
+  token: string,
+  workoutId: string,
+  workoutExerciseId: string
+): Promise<void> {
+  return apiRequest(`/workouts/${workoutId}/exercises/${workoutExerciseId}`, {
+    method: "DELETE",
+    token
+  });
+}

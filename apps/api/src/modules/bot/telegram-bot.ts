@@ -32,7 +32,7 @@ async function sendStartMessage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId,
-      text: "GymLog Mini - быстрый трекер силовых тренировок в Telegram.\nНачните тренировку за пару нажатий и отслеживайте прогресс.",
+      text: "RepVault - быстрый трекер силовых тренировок в Telegram.\nНачните тренировку за пару нажатий и отслеживайте прогресс.",
       reply_markup: {
         inline_keyboard: [
           [
@@ -75,7 +75,7 @@ async function fetchUpdates(
 
 export function startTelegramBot(logger: FastifyBaseLogger): void {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const miniAppUrl = process.env.TELEGRAM_MINIAPP_URL;
+  const miniAppUrl = process.env.TELEGRAM_MINIAPP_URL ?? process.env.MINIAPP_PUBLIC_URL;
   const enableBotPolling = process.env.TELEGRAM_BOT_POLLING_ENABLED === "true";
 
   if (!enableBotPolling) {
@@ -84,7 +84,7 @@ export function startTelegramBot(logger: FastifyBaseLogger): void {
   }
 
   if (!botToken || !miniAppUrl) {
-    logger.warn("Telegram bot polling skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_MINIAPP_URL is missing");
+    logger.warn("Telegram bot polling skipped: TELEGRAM_BOT_TOKEN and TELEGRAM_MINIAPP_URL (or MINIAPP_PUBLIC_URL) are required");
     return;
   }
 
@@ -102,7 +102,7 @@ export function startTelegramBot(logger: FastifyBaseLogger): void {
         const messageText = update.message?.text?.trim();
         const chatId = update.message?.chat.id;
 
-        if (!chatId || messageText !== "/start") {
+        if (!chatId || !messageText?.startsWith("/start")) {
           continue;
         }
 

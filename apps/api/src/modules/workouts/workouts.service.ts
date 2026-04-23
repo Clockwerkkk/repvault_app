@@ -137,6 +137,109 @@ export async function addExerciseToWorkout(
   return { status: "created" as const, workoutExercise };
 }
 
+export async function updateWorkoutTitle(userId: string, workoutId: string, title?: string) {
+  const workout = await prisma.workout.findFirst({
+    where: {
+      id: workoutId,
+      userId
+    }
+  });
+
+  if (!workout) {
+    return null;
+  }
+
+  return prisma.workout.update({
+    where: {
+      id: workout.id
+    },
+    data: {
+      title: normalizeWorkoutTitle(title)
+    }
+  });
+}
+
+export async function deleteWorkout(userId: string, workoutId: string) {
+  const workout = await prisma.workout.findFirst({
+    where: {
+      id: workoutId,
+      userId
+    }
+  });
+
+  if (!workout) {
+    return null;
+  }
+
+  await prisma.workout.delete({
+    where: {
+      id: workout.id
+    }
+  });
+
+  return { id: workout.id };
+}
+
+export async function deleteWorkoutExercise(userId: string, workoutId: string, workoutExerciseId: string) {
+  const workout = await prisma.workout.findFirst({
+    where: {
+      id: workoutId,
+      userId,
+      status: "active"
+    }
+  });
+
+  if (!workout) {
+    return { status: "workout_not_found" as const };
+  }
+
+  const workoutExercise = await prisma.workoutExercise.findFirst({
+    where: {
+      id: workoutExerciseId,
+      workoutId: workout.id
+    }
+  });
+
+  if (!workoutExercise) {
+    return { status: "workout_exercise_not_found" as const };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.workoutExercise.delete({
+      where: {
+        id: workoutExercise.id
+      }
+    });
+
+    const nextExercises = await tx.workoutExercise.findMany({
+      where: {
+        workoutId: workout.id
+      },
+      orderBy: {
+        orderIndex: "asc"
+      },
+      select: {
+        id: true
+      }
+    });
+
+    await Promise.all(
+      nextExercises.map((item, index) =>
+        tx.workoutExercise.update({
+          where: {
+            id: item.id
+          },
+          data: {
+            orderIndex: index + 1
+          }
+        })
+      )
+    );
+  });
+
+  return { status: "deleted" as const };
+}
+
 export async function getWorkoutHistory(userId: string) {
   const workouts = await prisma.workout.findMany({
     where: {
@@ -160,7 +263,8 @@ export async function getWorkoutHistory(userId: string) {
     const setsCount = workout.exercises.reduce((acc, item) => acc + item.sets.length, 0);
     const totalVolume = workout.exercises.reduce((acc, item) => {
       const exerciseVolume = item.sets.reduce((sum, set) => {
-        return sum + Number(set.weightKg) * set.reps;
+        const weight = set.weightKg === null ? 0 : Number(set.weightKg);
+        return sum + weight * set.reps;
       }, 0);
       return acc + exerciseVolume;
     }, 0);
@@ -211,7 +315,8 @@ export async function getWorkoutDetails(userId: string, workoutId: string) {
 
   const totalVolume = workout.exercises.reduce((acc, item) => {
     const exerciseVolume = item.sets.reduce((sum, set) => {
-      return sum + Number(set.weightKg) * set.reps;
+      const weight = set.weightKg === null ? 0 : Number(set.weightKg);
+      return sum + weight * set.reps;
     }, 0);
     return acc + exerciseVolume;
   }, 0);

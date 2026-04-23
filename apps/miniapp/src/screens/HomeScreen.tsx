@@ -11,6 +11,7 @@ type HomeScreenProps = {
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
   onLanguageChange: (language: Language) => void;
   onStartWorkout: () => void;
+  onOpenTemplates: () => void;
   onOpenHistory: () => void;
   onOpenCatalog: () => void;
 };
@@ -77,6 +78,9 @@ export function HomeScreen(props: HomeScreenProps) {
       </div>
 
       <div className="actions-row">
+        <button className="secondary-btn" onClick={props.onOpenTemplates} type="button">
+          {props.t("templatesTitle")}
+        </button>
         <button className="secondary-btn" onClick={props.onOpenHistory} type="button">
           {props.t("history")}
         </button>

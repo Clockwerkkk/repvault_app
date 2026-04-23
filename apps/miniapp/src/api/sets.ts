@@ -3,7 +3,7 @@ import { apiRequest } from "./client";
 export function createSet(
   token: string,
   workoutExerciseId: string,
-  body: { weightKg: number; reps: number; setType: "working" | "warmup" }
+  body: { weightKg?: number | null; reps: number; setType: "working" | "warmup" }
 ): Promise<{
   id: string;
 }> {
@@ -17,7 +17,7 @@ export function createSet(
 export function updateSet(
   token: string,
   setId: string,
-  body: { weightKg?: number; reps?: number; setType?: "working" | "warmup" }
+  body: { weightKg?: number | null; reps?: number; setType?: "working" | "warmup" }
 ): Promise<{ id: string }> {
   return apiRequest(`/sets/${setId}`, {
     method: "PATCH",

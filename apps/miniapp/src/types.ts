@@ -42,7 +42,7 @@ export type ActiveWorkout = {
     sets: Array<{
       id: string;
       setIndex: number;
-      weightKg: number;
+      weightKg: number | null;
       reps: number;
       setType: SetType;
     }>;
@@ -81,7 +81,7 @@ export type WorkoutDetails = {
     sets: Array<{
       id: string;
       setIndex: number;
-      weightKg: number;
+      weightKg: number | null;
       reps: number;
       setType: SetType;
     }>;
@@ -110,5 +110,23 @@ export type ExerciseProgress = {
     bestWeight: number;
     bestEstimatedOneRepMax: number;
     volume: number;
+  }>;
+};
+
+export type WorkoutTemplate = {
+  id: string;
+  title: string;
+  exercises: Array<{
+    id: string;
+    orderIndex: number;
+    exercise: {
+      id: string;
+      name: string;
+      category: {
+        id: string;
+        slug: string;
+        name: string;
+      };
+    };
   }>;
 };

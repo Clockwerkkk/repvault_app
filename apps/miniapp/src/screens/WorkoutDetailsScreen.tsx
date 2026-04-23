@@ -7,31 +7,37 @@ type WorkoutDetailsScreenProps = {
   loading: boolean;
   t: (key: MessageKey, params?: Record<string, string | number>) => string;
   onBack: () => void;
+  onDeleteWorkout: (workoutId: string) => void;
   onOpenExerciseProgress: (exerciseId: string) => void;
 };
 
 export function WorkoutDetailsScreen(props: WorkoutDetailsScreenProps) {
+  const workout = props.workout;
+
   return (
     <section className="screen">
-      <div className="sticky-header">
+      <div className="top-row sticky-header">
         <button className="text-btn" onClick={props.onBack} type="button">
           {props.t("back")}
         </button>
+        <h1>{props.t("workoutDetails")}</h1>
       </div>
-      <h1>{props.t("workoutDetails")}</h1>
 
       {props.loading ? <p>{props.t("loadingWorkoutDetails")}</p> : null}
-      {!props.loading && !props.workout ? <p>{props.t("workoutNotFound")}</p> : null}
+      {!props.loading && !workout ? <p>{props.t("workoutNotFound")}</p> : null}
 
-      {!props.loading && props.workout ? (
+      {!props.loading && workout ? (
         <>
           <article className="card">
-            <p><strong>{props.workout.title}</strong></p>
-            <p>{props.t("dateLabel", { value: formatLocalDate(props.workout.startedAt) })}</p>
-            <p>{props.t("totalVolumeLabel", { value: props.workout.totalVolume.toFixed(2) })}</p>
+            <p><strong>{workout.title}</strong></p>
+            <p>{props.t("dateLabel", { value: formatLocalDate(workout.startedAt) })}</p>
+            <p>{props.t("totalVolumeLabel", { value: workout.totalVolume.toFixed(2) })}</p>
+            <button className="text-btn" onClick={() => props.onDeleteWorkout(workout.id)} type="button">
+              {props.t("deleteWorkout")}
+            </button>
           </article>
 
-          {props.workout.exercises.map((item) => (
+          {workout.exercises.map((item) => (
             <article className="card" key={item.id}>
               <p>
                 <strong>
@@ -42,7 +48,7 @@ export function WorkoutDetailsScreen(props: WorkoutDetailsScreenProps) {
                 <p key={set.id}>
                   {props.t("setDetails", {
                     index: set.setIndex,
-                    weight: set.weightKg,
+                    weight: set.weightKg === null ? props.t("bodyweightLabel") : `${set.weightKg}кг`,
                     reps: set.reps,
                     setType: set.setType === "working" ? props.t("working") : props.t("warmup")
                   })}

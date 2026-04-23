@@ -34,9 +34,31 @@ To enable `/start` welcome message with inline button `Открыть прило
 
 - `TELEGRAM_BOT_POLLING_ENABLED=true`
 - `TELEGRAM_BOT_TOKEN=<your_bot_token>`
-- `TELEGRAM_MINIAPP_URL=<your_https_miniapp_url>`
+- `TELEGRAM_MINIAPP_URL=<your_https_miniapp_url>` (or `MINIAPP_PUBLIC_URL` as fallback)
 
 When enabled, API process polls bot updates and responds to `/start` with a short Russian intro and Web App button.
+
+Important:
+- Restart API process after changing bot env vars so polling picks up new values.
+- Bot handler accepts both plain `/start` and `/start <payload>`.
+
+## Phase 7 Implementation Notes
+
+Implemented UX/reliability updates include:
+- Sticky back navigation on scroll-heavy screens.
+- Workout editing controls: rename/delete workout, remove exercise from active workout.
+- Session continuity after app background/lock with state restore.
+- Dynamic Home CTA (`Continue Workout` vs `Start Workout`).
+- Bodyweight-friendly set logging (weight optional).
+- Templates:
+  - create from active workout,
+  - create from scratch (without starting workout),
+  - start workout from template,
+  - open template details,
+  - edit template title and exercise composition,
+  - delete template.
+- Confirm dialogs before destructive actions (set/exercise/workout/template deletes).
+- Stable URL/env strategy documented for BotFather/API/Mini App URLs.
 
 ## Cache-safe Relaunch Checklist
 
@@ -55,6 +77,36 @@ Use this sequence before validating a fresh Telegram relaunch to avoid stale web
    - category-first Add Exercise flow is present
    - dates/times are localized to device
 8. If old UI is still shown, repeat with a new tunnel URL and reopen Telegram again.
+
+## Permanent URL Strategy (Phase 7.7 Plan)
+
+This section is a deployment plan only. No production rollout is performed yet.
+
+### Target URL model
+
+- `MINIAPP_PUBLIC_URL` - stable HTTPS domain used in BotFather.
+- `API_PUBLIC_URL` - stable HTTPS API domain used by miniapp (`VITE_API_BASE_URL`).
+- `API_INTERNAL_URL` - private URL for service-to-service traffic (optional).
+
+### Recommended path
+
+1. Miniapp static hosting:
+   - Cloudflare Pages or Vercel
+   - custom domain (`miniapp.example.com`)
+2. API hosting:
+   - Railway/Render/Fly with fixed public domain
+   - custom domain (`api.example.com`)
+3. DNS + TLS:
+   - managed DNS records for miniapp/api
+   - HTTPS certificates (auto-managed by platform)
+4. Environment promotion:
+   - `dev` -> `stage` -> `prod` URL sets
+   - keep BotFather pointed only to production miniapp URL
+
+### BotFather stability rule
+
+- After switching to `MINIAPP_PUBLIC_URL` with a permanent domain, do not rotate URL on every restart.
+- Tunnel URLs remain only for local debug and should not replace production BotFather URL.
 
 ## Quality & Build
 

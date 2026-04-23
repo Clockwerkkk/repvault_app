@@ -6,7 +6,7 @@ import { createSet, deleteSet, updateSet } from "./sets.service.js";
 function mapSetResponse(set: {
   id: string;
   setIndex: number;
-  weightKg: { toNumber(): number } | number;
+  weightKg: { toNumber(): number } | number | null;
   reps: number;
   setType: string;
   createdAt: Date;
@@ -15,7 +15,7 @@ function mapSetResponse(set: {
   return {
     id: set.id,
     setIndex: set.setIndex,
-    weightKg: typeof set.weightKg === "number" ? set.weightKg : set.weightKg.toNumber(),
+    weightKg: set.weightKg === null ? null : typeof set.weightKg === "number" ? set.weightKg : set.weightKg.toNumber(),
     reps: set.reps,
     setType: set.setType,
     createdAt: set.createdAt.toISOString(),
@@ -33,7 +33,10 @@ export async function registerSetsController(server: FastifyInstance): Promise<v
       }
 
       const result = await createSet(request.authUserId, request.params.id, {
-        weightKg: Number(request.body?.weightKg),
+        weightKg:
+          request.body?.weightKg === undefined || request.body?.weightKg === null
+            ? null
+            : Number(request.body.weightKg),
         reps: Number(request.body?.reps),
         setType: request.body?.setType ?? "working"
       });
@@ -60,7 +63,11 @@ export async function registerSetsController(server: FastifyInstance): Promise<v
 
       const result = await updateSet(request.authUserId, request.params.id, {
         weightKg:
-          request.body?.weightKg === undefined ? undefined : Number(request.body.weightKg),
+          request.body?.weightKg === undefined
+            ? undefined
+            : request.body.weightKg === null
+              ? null
+              : Number(request.body.weightKg),
         reps: request.body?.reps === undefined ? undefined : Number(request.body.reps),
         setType: request.body?.setType
       });

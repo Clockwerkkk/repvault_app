@@ -1,11 +1,11 @@
 export type CreateSetBody = {
-  weightKg: number;
+  weightKg?: number | null;
   reps: number;
   setType?: "working" | "warmup";
 };
 
 export type UpdateSetBody = {
-  weightKg?: number;
+  weightKg?: number | null;
   reps?: number;
   setType?: "working" | "warmup";
 };

@@ -13,12 +13,12 @@ type HistoryScreenProps = {
 export function HistoryScreen(props: HistoryScreenProps) {
   return (
     <section className="screen">
-      <div className="sticky-header">
+      <div className="top-row sticky-header">
         <button className="text-btn" onClick={props.onBack} type="button">
           {props.t("back")}
         </button>
+        <h1>{props.t("workoutHistory")}</h1>
       </div>
-      <h1>{props.t("workoutHistory")}</h1>
 
       {props.loading ? <p>{props.t("loadingHistory")}</p> : null}
       {!props.loading && props.items.length === 0 ? <p>{props.t("noCompletedWorkouts")}</p> : null}

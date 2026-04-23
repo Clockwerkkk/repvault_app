@@ -12,12 +12,12 @@ type ExerciseProgressScreenProps = {
 export function ExerciseProgressScreen(props: ExerciseProgressScreenProps) {
   return (
     <section className="screen">
-      <div className="sticky-header">
+      <div className="top-row sticky-header">
         <button className="text-btn" onClick={props.onBack} type="button">
           {props.t("back")}
         </button>
+        <h1>{props.t("exerciseProgress")}</h1>
       </div>
-      <h1>{props.t("exerciseProgress")}</h1>
 
       {props.loading ? <p>{props.t("loadingProgress")}</p> : null}
       {!props.loading && !props.progress ? <p>{props.t("noProgressData")}</p> : null}

@@ -12,6 +12,16 @@ describe("sets service validation", () => {
     expect(result).toBeNull();
   });
 
+  it("accepts bodyweight set without external load", () => {
+    const result = validateSetInput({
+      weightKg: null,
+      reps: 12,
+      setType: "working"
+    });
+
+    expect(result).toBeNull();
+  });
+
   it("rejects negative weight", () => {
     const result = validateSetInput({
       weightKg: -1,

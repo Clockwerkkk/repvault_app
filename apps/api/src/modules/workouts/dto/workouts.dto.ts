@@ -5,3 +5,7 @@ export type CreateWorkoutBody = {
 export type AddWorkoutExerciseBody = {
   exerciseId: string;
 };
+
+export type UpdateWorkoutBody = {
+  title?: string;
+};

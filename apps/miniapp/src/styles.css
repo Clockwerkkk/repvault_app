@@ -53,10 +53,18 @@ body {
 
 .sticky-header {
   position: sticky;
-  top: 0;
+  top: env(safe-area-inset-top);
   z-index: 20;
-  background: #0f1115;
-  padding: 6px 0;
+  background: rgba(15, 17, 21, 0.96);
+  backdrop-filter: blur(6px);
+  padding: 8px 0;
+  margin: -8px 0 4px;
+  border-bottom: 1px solid #2a313d;
+}
+
+.sticky-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
 }
 
 .actions-row {
@@ -100,6 +108,16 @@ body {
 .secondary-btn {
   background: #232b38;
   color: #fff;
+}
+
+.danger-btn {
+  background: #b4232d;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .text-btn {
