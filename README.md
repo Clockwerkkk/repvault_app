@@ -1,4 +1,4 @@
-# GymLog Mini
+# RepVault app
 
 Telegram Mini App MVP for fast strength workout logging.
 
